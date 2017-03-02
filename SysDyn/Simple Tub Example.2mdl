@@ -1,0 +1,92 @@
+{UTF-8}
+Inflow  = A FUNCTION OF( Tank) ~~|
+Inflow=
+	Tank/50
+	~	
+	~		|
+
+Outflow=
+	tub/10
+	~	
+	~		|
+
+Tank  = A FUNCTION OF( -Inflow) ~~|
+Tank= INTEG (
+	-Inflow,
+		1000)
+	~	
+	~		|
+
+tub  = A FUNCTION OF( Inflow,-Outflow) ~~|
+tub= INTEG (
+	Inflow-Outflow,
+		0)
+	~	
+	~		|
+
+********************************************************
+	.Control
+********************************************************~
+		Simulation Control Parameters
+	|
+
+FINAL TIME  = 100
+	~	Month
+	~	The final time for the simulation.
+	|
+
+INITIAL TIME  = 0
+	~	Month
+	~	The initial time for the simulation.
+	|
+
+SAVEPER  = 
+        TIME STEP 
+	~	Month [0,?]
+	~	The frequency with which output is stored.
+	|
+
+TIME STEP  = 1
+	~	Month [0,?]
+	~	The time step for the simulation.
+	|
+
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*View 1
+$192-192-192,0,Times New Roman|12||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,100,0
+10,1,tub,619,134,40,20,3,3,0,0,0,0,0,0
+12,5,48,623,324,10,8,0,3,0,0,-1,0,0,0
+1,6,8,5,4,0,0,22,0,0,0,-1--1--1,,1|(623,278)|
+1,7,8,1,100,0,0,22,0,0,0,-1--1--1,,1|(623,191)|
+11,8,0,623,235,8,6,33,3,0,0,4,0,0,0
+10,9,Outflow,658,235,27,11,40,3,0,0,-1,0,0,0
+1,14,1,8,1,0,0,0,0,64,0,-1--1--1,,1|(733,199)|
+10,15,Tank,315,131,40,20,3,3,0,0,0,0,0,0
+1,19,21,1,4,0,0,22,0,0,0,-1--1--1,,1|(526,132)|
+1,20,21,15,100,0,0,22,0,0,0,-1--1--1,,1|(408,132)|
+11,21,0,467,132,6,8,34,3,0,0,1,0,0,0
+10,22,Inflow,467,151,21,11,40,3,0,0,-1,0,0,0
+1,23,15,21,1,0,0,0,0,64,0,-1--1--1,,1|(355,75)|
+///---\\\
+:L<%^E!@
+1:Current.vdf
+9:Current
+23:0
+15:0,0,0,0,0,0
+19:100,0
+27:2,
+34:0,
+4:Time
+5:Inflow
+35:Date
+36:YYYY-MM-DD
+37:2000
+38:1
+39:1
+40:2
+41:0
+42:1
+24:0
+25:100
+26:100

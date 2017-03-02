@@ -1,0 +1,466 @@
+{UTF-8}
+Fire On off=
+	IF THEN ELSE(Grid On Off=0:AND:Wood Available=1, 1 , 0 )
+	~	
+	~		|
+
+Leaving Battery=
+	Battery Discharging On Off*(Total demand-Solar Output)/Battery Discharge Efficiency
+	~	
+	~		|
+
+Solar Multiplier=
+	2
+	~	
+	~		|
+
+Solar Output=
+	((Solar Radiation*3.01)+0.65)*Solar Multiplier
+	~	
+	~		|
+
+Solar Available for charging=
+	IF THEN ELSE(Grid On Off=1, Solar Output*Battery Charging On Off , Battery Charging On Off\
+		*(MAX(0,Solar Output-Total demand)) )
+	~	
+	~	Battery Charging On Off*(MAX(0,Solar Output-Total demand))
+	|
+
+"Non-grid output"=
+	Generator Output+(Leaving Battery*Battery Discharge Efficiency)+Solar Output-Solar Available for charging
+	~	
+	~		|
+
+Battery Charging Efficiency=
+	0.85
+	~	
+	~		|
+
+Charging Battery=
+	IF THEN ELSE(Battery Storage<Battery Capacity, Solar Available for charging*Battery Charging On Off\
+		*Battery Charging Efficiency,0)
+	~	
+	~		|
+
+Battery Discharge Efficiency=
+	0.85
+	~	
+	~		|
+
+App Input=
+	Appliance Demand
+	~	
+	~		|
+
+Heat Input=
+	Heat Demand
+	~	
+	~		|
+
+Light Input=
+	Light Demand
+	~	
+	~		|
+
+Wood Available=
+	IF THEN ELSE(Wood>0, 1 , 0 )
+	~	
+	~		|
+
+Burning=
+	Fire On off*Wood Needed*Wood Available
+	~	
+	~		|
+
+Battery Charging On Off=
+	IF THEN ELSE( (Grid On Off=1 :AND: Battery Storage<=Battery Capacity) :OR:(Grid On Off\
+		=0 :AND:Solar Output>Total demand) , 1 , 0 )
+	~	
+	~		|
+
+Generator Output=
+	Combusting*16
+	~	
+	~	One gallon generates 16 KwH
+	|
+
+Battery Discharging On Off=
+	IF THEN ELSE(Grid On Off=0 :AND:Battery Storage>0 :AND:Solar Output<Total demand, 1 \
+		, 0 )
+	~	
+	~		|
+
+Gen On Off=
+	IF THEN ELSE(Grid On Off=0 :AND: (Solar Output+Leaving Battery)<Total demand, 1 , 0 \
+		)
+	~	
+	~		|
+
+Objective Heat Demand:INTERPOLATE::=
+	GET XLS DATA( 'InputData.xls' , 'Sheet1' , 'A', 'C2')
+	~	
+	~	Test 1: +STEP(-10, 75 )
+	|
+
+Wood Constant=
+	0.00140795
+	~	 [0,1]
+	~		|
+
+Heat Demand=
+	Objective Heat Demand*(1-Fire On off)
+	~	Kwh
+	~		|
+
+Wood Needed=
+	Objective Heat Demand*Wood Constant
+	~	Cords
+	~		|
+
+Appliance Demand:=
+	GET XLS DATA( 'InputData.xls' , 'Sheet1' , 'A', 'E2')
+	~	Kwh
+	~	Normal: 10
+		Test 3: 10+STEP(200, 75 )
+		Test 4: 10+STEP(90,75)
+		Test 5: 95+STEP(10,75)
+	|
+
+Appliance Used= INTEG (
+	App Input,
+		0)
+	~	
+	~		|
+
+Battery Capacity=
+	100
+	~	
+	~		|
+
+Battery Storage= INTEG (
+	Charging Battery-Leaving Battery,
+		0)
+	~	
+	~		|
+
+Combusting=
+	Fuel Available*Gen On Off*3
+	~	
+	~		|
+
+Fuel Available=
+	IF THEN ELSE(Gasoline>0, 1 , 0 )
+	~	
+	~		|
+
+Gasoline= INTEG (
+	-Combusting,
+		100)
+	~	
+	~		|
+
+Grid On Off=
+	1+STEP(-1,456)
+	~	
+	~	October = 1+STEP(-1,273)
+	|
+
+Heat Used= INTEG (
+	Heat Input,
+		0)
+	~	
+	~		|
+
+Light Demand:=
+	GET XLS DATA( 'InputData.xls' , 'Sheet1' , 'A', 'D2')
+	~	Kwh
+	~		|
+
+Light Used= INTEG (
+	Light Input,
+		0)
+	~	
+	~		|
+
+Solar Radiation:INTERPOLATE::=
+	GET XLS DATA( 'InputData.xls' , 'Sheet1' , 'A', 'G2')
+	~	"kWh/m^2/day"
+	~		|
+
+Total AC Flowing in House=
+	IF THEN ELSE(Grid On Off=1, Total demand , MIN("Non-grid output",Total demand ))
+	~	
+	~		|
+
+Total AC Used= INTEG (
+	Total AC Flowing in House,
+		0)
+	~	
+	~		|
+
+Total demand=
+	Appliance Demand+Heat Demand+Light Demand
+	~	
+	~		|
+
+Wood= INTEG (
+	-Burning,
+		8)
+	~	Cord
+	~		|
+
+********************************************************
+	.Control
+********************************************************~
+		Simulation Control Parameters
+	|
+
+FINAL TIME  = 700
+	~	Day
+	~	The final time for the simulation.
+	|
+
+INITIAL TIME  = 0
+	~	Day
+	~	The initial time for the simulation.
+	|
+
+SAVEPER  = 
+        TIME STEP
+	~	Day [0,?]
+	~	The frequency with which output is stored.
+	|
+
+TIME STEP  = 0.015625
+	~	Day [0,?]
+	~	The time step for the simulation.
+	|
+
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*View 1
+$192-192-192,0,Times New Roman|12||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,5,0
+10,1,Total AC Used,1025,288,40,20,3,3,0,0,0,0,0,0
+12,2,48,840,286,10,8,0,3,0,0,-1,0,0,0
+1,3,5,1,4,0,0,22,0,0,0,-1--1--1,,1|(910,288)|
+1,4,5,2,100,0,0,22,0,0,0,-1--1--1,,1|(910,286)|
+11,5,48,910,309,6,8,34,3,0,0,1,0,0,0
+10,6,Total AC Flowing in House,910,336,58,19,40,3,0,0,-1,0,0,0
+10,7,Grid On Off,832,115,45,19,8,3,0,0,0,0,0,0
+10,8,Total demand,1231,188,44,11,8,3,0,0,0,0,0,0
+10,9,Heat Demand,1573,264,50,21,8,131,0,0,0,0,0,0
+10,10,Light Demand,1421,269,45,11,8,3,0,0,0,0,0,0
+10,11,Appliance Demand,1282,272,33,19,8,3,0,0,0,0,0,0
+1,12,11,8,1,0,43,0,2,128,0,-1--1--1,|12||0-0-0,1|(1261,235)|
+1,13,10,8,1,0,43,0,2,128,0,-1--1--1,|12||0-0-0,1|(1353,237)|
+1,14,9,8,1,0,43,0,2,192,0,-1--1--1,|12||0-0-0,1|(1428,194)|
+1,15,7,6,1,0,0,0,2,0,0,-1--1--1,|12||0-0-0,1|(854,204)|
+1,16,8,6,1,0,43,0,2,128,0,-1--1--1,|12||0-0-0,1|(1006,254)|
+10,17,Wood,1114,117,40,20,3,3,0,0,0,0,0,0
+12,18,48,1360,118,10,8,0,3,0,0,-1,0,0,0
+1,19,21,18,4,0,0,22,0,0,0,-1--1--1,,1|(1308,118)|
+1,20,21,17,100,0,0,22,0,0,0,-1--1--1,,1|(1204,118)|
+11,21,48,1261,118,6,8,34,3,0,0,1,0,0,0
+10,22,Burning,1261,137,40,11,40,3,0,0,-1,0,0,0
+10,23,Fire On off,1363,65,39,16,8,131,0,0,0,0,0,0
+1,24,23,22,1,0,43,0,2,128,0,-1--1--1,|12||0-0-0,1|(1287,81)|
+10,25,Wood Needed,1456,139,76,23,8,131,0,0,0,0,0,0
+1,26,25,22,1,0,43,0,2,192,0,-1--1--1,|12||0-0-0,1|(1346,155)|
+1,27,23,9,1,0,45,0,2,128,0,-1--1--1,|12||0-0-0,1|(1612,182)|
+1,28,7,23,1,0,45,0,2,64,0,-1--1--1,|12||0-0-0,1|(1062,26)|
+10,29,Gasoline,267,99,40,20,3,3,0,0,0,0,0,0
+12,30,48,511,103,10,8,0,3,0,0,-1,0,0,0
+1,31,33,30,4,0,0,22,0,0,0,-1--1--1,,1|(458,106)|
+1,32,33,29,100,0,0,22,0,0,0,-1--1--1,,1|(355,106)|
+11,33,48,409,106,6,8,34,3,0,0,1,0,0,0
+10,34,Combusting,409,125,38,11,40,3,0,0,-1,0,0,0
+10,35,Gen On Off,541,26,47,11,8,3,0,0,0,0,0,0
+1,36,7,35,1,0,45,0,2,64,0,-1--1--1,|12||0-0-0,1|(748,49)|
+1,37,35,33,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(440,56)|
+10,38,Fuel Available,319,32,45,11,8,3,0,0,0,0,0,0
+1,39,29,38,0,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(291,66)|
+1,40,38,33,0,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(362,68)|
+10,41,Battery Storage,786,680,40,20,3,3,0,0,0,0,0,0
+12,42,48,962,675,10,8,0,3,0,0,-1,0,0,0
+1,43,45,42,4,0,0,22,0,0,0,-1--1--1,,1|(930,677)|
+1,44,45,41,100,0,0,22,0,0,0,-1--1--1,,1|(861,677)|
+11,45,48,902,677,6,8,34,3,0,0,1,0,0,0
+10,46,Leaving Battery,902,703,51,18,40,131,0,0,-1,0,0,0
+12,47,48,582,673,10,8,0,3,0,0,-1,0,0,0
+1,48,50,41,4,0,0,22,0,0,0,-1--1--1,,1|(710,670)|
+1,49,50,47,100,0,0,22,0,0,0,-1--1--1,,1|(627,670)|
+11,50,48,668,670,6,8,34,3,0,0,1,0,0,0
+10,51,Charging Battery,668,689,53,11,40,3,0,0,-1,0,0,0
+10,52,Solar Radiation,192,214,44,23,8,131,0,0,0,0,0,0
+10,53,Solar Output,306,316,41,11,8,3,0,0,0,0,0,0
+1,54,45,60,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(709,431)|
+10,55,Battery Capacity,498,588,61,6,8,131,0,0,0,0,0,0
+1,56,55,51,1,0,0,0,0,64,0,-1--1--1,,1|(651,674)|
+1,57,52,53,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(275,243)|
+1,58,53,60,1,0,43,0,2,128,0,-1--1--1,|12||0-0-0,1|(482,313)|
+1,59,41,51,1,0,45,0,2,64,0,-1--1--1,|12||0-0-0,1|(742,717)|
+10,60,"Non-grid output",552,282,51,11,8,3,0,0,0,0,0,0
+1,61,60,6,1,0,45,0,2,64,0,-1--1--1,|12||0-0-0,1|(807,290)|
+10,62,Heat Used,1565,494,40,20,3,3,0,0,0,0,0,0
+10,63,Light Used,1431,496,40,20,3,3,0,0,0,0,0,0
+10,64,Appliance Used,1294,573,40,20,3,3,0,0,0,0,0,0
+12,65,48,1293,468,10,8,0,3,0,0,-1,0,0,0
+1,66,68,64,4,0,0,22,0,0,0,-1--1--1,,1|(1295,530)|
+1,67,68,65,100,0,0,22,0,0,0,-1--1--1,,1|(1295,486)|
+11,68,48,1295,502,8,6,33,3,0,0,4,0,0,0
+10,69,App Input,1336,502,33,11,40,3,0,0,-1,0,0,0
+12,70,48,1428,383,10,8,0,3,0,0,-1,0,0,0
+1,71,73,63,4,0,0,22,0,0,0,-1--1--1,,1|(1426,459)|
+1,72,73,70,100,0,0,22,0,0,0,-1--1--1,,1|(1426,410)|
+11,73,48,1426,436,8,6,33,3,0,0,4,0,0,0
+10,74,Light Input,1469,436,35,11,40,3,0,0,-1,0,0,0
+12,75,48,1567,375,10,8,0,3,0,0,-1,0,0,0
+1,76,78,62,4,0,0,22,0,0,0,-1--1--1,,1|(1569,452)|
+1,77,78,75,100,0,0,22,0,0,0,-1--1--1,,1|(1569,401)|
+11,78,48,1569,425,8,6,33,3,0,0,4,0,0,0
+10,79,Heat Input,1611,425,34,11,40,3,0,0,-1,0,0,0
+1,80,11,69,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(1346,425)|
+1,81,10,74,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(1473,330)|
+1,82,9,79,1,0,43,0,2,128,0,-1--1--1,|12||0-0-0,1|(1626,326)|
+1,83,8,35,1,0,0,0,0,64,0,-1--1--1,,1|(902,171)|
+1,84,53,35,1,0,45,0,2,64,0,-1--1--1,|12||0-0-0,1|(498,192)|
+10,85,Objective Heat Demand,1470,67,49,19,8,3,0,0,0,0,0,0
+1,86,85,9,1,0,43,0,2,0,0,-1--1--1,|12||0-0-0,1|(1575,123)|
+1,87,85,25,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(1420,81)|
+10,88,Wood Constant,1513,195,51,11,8,3,0,0,0,0,0,0
+1,89,88,25,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(1465,159)|
+10,90,Battery Charging On Off,661,587,61,17,8,131,0,0,0,0,0,0
+1,91,7,90,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(693,309)|
+1,92,8,90,1,0,45,0,2,64,0,-1--1--1,|12||0-0-0,1|(1032,402)|
+1,93,90,50,0,0,0,0,0,64,0,-1--1--1,,1|(663,627)|
+1,94,53,90,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(541,465)|
+10,95,Solar Available for charging,334,414,60,19,8,3,0,0,0,0,0,0
+1,96,53,95,0,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(316,354)|
+1,97,90,95,0,0,43,0,2,128,0,-1--1--1,|12||0-0-0,1|(505,504)|
+1,98,8,95,1,0,45,0,2,64,0,-1--1--1,|12||0-0-0,1|(882,441)|
+10,99,Generator Output,326,162,56,11,8,3,0,0,0,0,0,0
+1,100,34,99,0,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(373,140)|
+1,101,41,90,0,0,45,0,2,64,0,-1--1--1,|12||0-0-0,1|(727,636)|
+1,102,55,90,0,0,0,0,0,64,0,-1--1--1,,1|(572,587)|
+1,103,45,35,1,0,45,0,2,64,0,-1--1--1,|12||0-0-0,1|(762,336)|
+1,104,95,51,1,0,43,0,2,128,0,-1--1--1,|12||0-0-0,1|(424,611)|
+10,105,Battery Discharging On Off,955,548,62,19,8,3,0,0,0,0,0,0
+1,106,8,105,1,0,0,0,0,64,0,-1--1--1,,1|(1213,370)|
+1,107,53,105,1,0,45,0,2,128,0,-1--1--1,|12||0-0-0,1|(887,513)|
+1,108,105,45,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(919,596)|
+1,109,41,105,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(827,619)|
+1,110,7,105,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(809,323)|
+1,111,99,60,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(391,227)|
+1,112,95,60,1,0,45,0,2,192,0,-1--1--1,|12||0-0-0,1|(514,337)|
+10,113,Wood Available,1165,59,52,11,8,3,0,0,0,0,0,0
+1,114,17,113,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(1161,71)|
+1,115,113,22,0,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(1207,93)|
+10,116,Battery Charging Efficiency,364,665,62,16,8,131,0,0,0,0,0,0
+1,117,116,51,1,0,43,0,2,192,0,-1--1--1,|12||0-0-0,1|(516,705)|
+10,118,Battery Discharge Efficiency,569,206,57,19,8,3,0,0,0,0,0,0
+1,119,118,60,0,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(561,241)|
+1,120,7,95,1,0,0,0,0,64,0,-1--1--1,,1|(543,411)|
+1,121,53,46,0,0,0,0,0,64,0,-1--1--1,,1|(592,502)|
+1,122,8,46,0,0,0,0,0,64,0,-1--1--1,,1|(1072,436)|
+10,123,Solar Multiplier,168,355,49,11,8,3,0,0,0,0,0,0
+1,124,123,53,1,0,43,0,2,64,0,-1--1--1,|12||0-0-0,1|(266,377)|
+1,125,118,46,1,0,0,0,0,64,0,-1--1--1,,1|(764,433)|
+1,126,113,23,1,0,0,0,0,64,0,-1--1--1,,1|(1258,52)|
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*View 2
+$192-192-192,0,Times New Roman|12||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,5,0
+///---\\\
+:GRAPH October_Full_Scale
+:TITLE October Grid Failure
+:SCALE
+:VAR Total AC Flowing in House
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Total demand
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Grid On Off
+
+:GRAPH January_Grid_Failure
+:TITLE January Grid Failure
+:SCALE
+:VAR Total AC Flowing in House
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Total demand
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Grid On Off
+:Y-MIN 0
+:Y-MAX 1
+
+:GRAPH April_Grid_Fail
+:TITLE April Grid Failure
+:SCALE
+:VAR Total AC Flowing in House
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Total demand
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Grid On Off
+
+:GRAPH July_Grid_Fail
+:TITLE July Grid Failure
+:SCALE
+:VAR Total AC Flowing in House
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Total demand
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Grid On Off
+
+:GRAPH January_Grid_Failure_Small
+:TITLE January Grid Failure
+:X-MIN 350
+:X-MAX 450
+:SCALE
+:VAR Total AC Flowing in House
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Total demand
+:Y-MIN 0
+:Y-MAX 60
+:SCALE
+:VAR Grid On Off
+:Y-MIN 0
+:Y-MAX 1
+:L<%^E!@
+1:April Grid Failure Double Solar.vdf
+1:April Grid Failure.vdf
+1:January Grid Failure Double Solar.vdf
+9:April Grid Failure Double Solar
+23:0
+15:0,0,0,0,0,0
+19:5,0
+27:2,
+34:0,
+4:Time
+5:Solar Multiplier
+35:Date
+36:YYYY-MM-DD
+37:2000
+38:1
+39:1
+40:4
+41:0
+42:1
+24:0
+25:700
+26:700
